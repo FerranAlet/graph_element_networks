@@ -139,11 +139,11 @@ def show_structure_mesh(G, writer=None, epoch=0):
     '''
     try:
         path_to_image = 'data/poisson_img/'+str(G.data_idx[0])+'-v.npy'
+        values = np.load(path_to_image)
     except:
-        print('Image not found, look github for download directions \
-                to show_structure meshes')
+        print('Image not found, look github for download directions '+
+                'to show_structure meshes')
         return
-    values = np.load(path_to_image)
     if len(values.shape) == 3 and values.shape[-1] not in [1,3]:
       values = values[0] #multiple images
     fig = plt.figure()
