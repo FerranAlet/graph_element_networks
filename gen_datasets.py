@@ -24,7 +24,7 @@ class FTDataset(Dataset):
         self.n_out = len(self.OutDatasets)
         self.size = len(self.InpDatasets[0])
         for d in self.InpDatasets + self.OutDatasets:
-            assert len(d) == self.size
+            assert len(d) == self.size, str(len(d)) + ' ' + str(self.size)
 
         #TODO: check that all X leave in the same space
 

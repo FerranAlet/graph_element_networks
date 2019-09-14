@@ -32,9 +32,9 @@ do_tensorboard = True
 
 if not opt_nodes: slow_opt_nodes = False
 full_dataset = FTDataset(inp_datasets=[PoissonSquareRoomInpDataset],
-        inp_datasets_args = [{'dir_path' : 'data/new_poisson'}],
+        inp_datasets_args = [{'dir_path' : 'data/poisson_inp'}],
         out_datasets = [PoissonSquareRoomOutDataset],
-        out_datasets_args = [{'file_path' : 'data/new_poisson.hdf5'}],
+        out_datasets_args = [{'file_path' : 'data/poisson_out.hdf5'}],
         idx_list=None)
 train_size = int(0.8*len(full_dataset))
 test_size = len(full_dataset) - train_size
