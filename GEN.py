@@ -57,7 +57,7 @@ class GEN(nn.Module):
         # Initialize GNN node states with representation function
         inp_coord = self.repr_fn(G.pos, x_inp, **repr_fn_args)
         G.x = torch.bmm(torch.transpose(inp_coord, 1, 2), inputs)
-        num_nodes, bs, f = G.x.shape
+        bs, num_nodes, f = G.x.shape
         # Create Batch to feed to GNN
         data_list = [Data(x=x.squeeze(0), pos=G.pos, edge_index=G.edge_index)
                 for x in torch.split(G.x,split_size_or_sections=1,dim=0)]
