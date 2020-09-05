@@ -100,37 +100,30 @@ for epoch in Tqdm(range(1000), position=0):
             Q = [o[0] for o in Out]
             targets = [o[1] for o in Out]
             train_graphs += 1
+            if model_type == 'NP': preds = model(Inp, Q)
+            else: preds = model(Inp, Q, G=G)
             if slow_opt_nodes:
-                FInp = [[inp[0][:node_train], inp[1][:node_train]]
-                        for inp in Inp]
-                FQ = [q[:node_train] for q in Q]
-                EInp = [[inp[0][node_train:], inp[1][node_train:]]
-                        for inp in Inp]
-                EQ = [q[node_train:] for q in Q]
-                Fpreds = model(FInp, FQ, G=G)
-                Epreds = model(EInp, EQ, G=G)
-                finetune_losses = [loss_fn(pred,
-                    target[:node_train]).unsqueeze(0)
-                    for (pred, target) in zip(Fpreds, targets)]
-                finetune_loss = torch.sum(torch.cat(finetune_losses))
-                exec_losses = [loss_fn(pred,
+                exec_losses = [loss_fn(pred[node_train:],
                     target[node_train:]).unsqueeze(0)
-                    for (pred, target) in zip(Epreds, targets)]
-                exec_loss = torch.sum(torch.cat(exec_losses))
+                    for (pred, target) in zip(preds, targets)]
+                loss = torch.sum(torch.cat(exec_losses))
+                loss.backward(retain_graph=True)
+
+                finetune_losses = [loss_fn(pred[:node_train],
+                    target[:node_train]).unsqueeze(0)
+                    for (pred, target) in zip(preds, targets)]
+                finetune_loss = torch.sum(torch.cat(finetune_losses))
                 mesh_opt.zero_grad()
                 finetune_loss.backward()
                 mesh_opt.step()
                 # project back to square
                 graph_update_meshes_after_opt(mesh_list[idx][g_idx],
                         epoch=epoch, writer=writer)
-                loss = exec_loss
             else:
-                if model_type == 'NP': preds = model(Inp, Q)
-                else: preds = model(Inp, Q, G=G)
                 losses = [loss_fn(pred, target).unsqueeze(0)
                     for (pred, target) in zip(preds, targets)]
                 loss = torch.sum(torch.cat(losses))
-            loss.backward()
+                loss.backward()
             train_loss += loss.item()
             train_loss_summ[G.num_nodes][0] += loss.item()
             pos_change_summ[G.num_nodes][0] += (
