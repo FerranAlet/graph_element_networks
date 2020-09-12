@@ -18,7 +18,7 @@ from utils import Net
 torch.manual_seed(0)
 cuda = torch.cuda.is_available()
 device = torch.device('cuda') if cuda else torch.device('cpu')
-model_type = ['GENSoftNN', 'GENPlanarGrid', 'NP'][0]
+model_type = ['GENSoftNN', 'GENPlanarGrid', 'NP'][2]
 bs = 8
 k = 32
 node_train = 16
@@ -30,6 +30,8 @@ do_tensorboard = True
 # Changed the random initialization because GeneralizedHalton
 # doesn't install well on a Docker. We use another simple random initialization.
 
+if model_type == 'NP':
+    opt_nodes = False
 if not opt_nodes: slow_opt_nodes = False
 full_dataset = FTDataset(inp_datasets=[PoissonSquareRoomInpDataset],
         inp_datasets_args = [{'dir_path' : 'data/poisson_inp'}],
@@ -64,12 +66,11 @@ else:
             sqrt_num_nodes_list=sqrt_num_nodes_list,
             initialization='random' if opt_nodes else 'uniform',
             copies_per_graph=copies_per_graph, device=device)
-    max_mesh_list_elts = max([len(aux) for aux in mesh_list])
+max_mesh_list_elts = max([len(aux) for aux in mesh_list])
 if cuda: model.cuda()
 opt = torch.optim.Adam(params=model.parameters(), lr=3e-3)
-if len(mesh_params):
-    mesh_opt = torch.optim.Adam(params=mesh_params, lr=3e-4)
-else: mesh_opt = None
+if model_type == 'NP':mesh_opt = None
+else: mesh_opt = torch.optim.Adam(params=mesh_params, lr=3e-4)
 
 if do_tensorboard: writer = SummaryWriter()
 else: writer = None
@@ -77,9 +78,14 @@ else: writer = None
 for epoch in Tqdm(range(1000), position=0):
     train_loss = 0. ;  test_loss = 0.
     train_graphs = 0 ; test_graphs = 0
-    train_loss_summ = {num**2:[0,0] for num in sqrt_num_nodes_list}
-    test_loss_summ = {num**2:[0,0] for num in sqrt_num_nodes_list}
-    pos_change_summ = {num**2:[0,0] for num in sqrt_num_nodes_list}
+    if model_type == 'NP': # A NP is equivalent to a GEN with 1 node
+        train_loss_summ = {1:[0,0]}
+        test_loss_summ = {1: [0,0]}
+        pos_change_summ = {1: [0,0]}
+    else:
+        train_loss_summ = {num**2:[0,0] for num in sqrt_num_nodes_list}
+        test_loss_summ = {num**2:[0,0] for num in sqrt_num_nodes_list}
+        pos_change_summ = {num**2:[0,0] for num in sqrt_num_nodes_list}
     for g_idx in Tqdm(range(max_mesh_list_elts), position=1):
         for cnt, ((Inp,Out),idx) in enumerate(train_loader):
             if len(mesh_list[idx]) <= g_idx: continue
@@ -125,16 +131,19 @@ for epoch in Tqdm(range(1000), position=0):
                 loss = torch.sum(torch.cat(losses))
                 loss.backward()
             train_loss += loss.item()
-            train_loss_summ[G.num_nodes][0] += loss.item()
-            pos_change_summ[G.num_nodes][0] += (
-                    torch.max(torch.abs(G.pos - G.ini_pos)).item())
-            train_loss_summ[G.num_nodes][1] += 1
-            pos_change_summ[G.num_nodes][1] += 1
+            num_nodes = 0 if model_type== 'NP' else G.num_nodes
+            train_loss_summ[num_nodes][0] += loss.item()
+            train_loss_summ[num_nodes][1] += 1
+            if model_type != 'NP':
+                pos_change_summ[num_nodes][0] += (
+                        torch.max(torch.abs(G.pos - G.ini_pos)).item())
+                pos_change_summ[num_nodes][1] += 1
             if (cnt % bs == bs-1) or (cnt == len(train_loader)-1):
                 opt.step()
                 opt.zero_grad()
     if do_tensorboard:
-        for num in sqrt_num_nodes_list:
+        it_list = [1] if model_type=='NP' else sqrt_num_nodes_list
+        for num in it_list:
             writer.add_scalar('train/loss-'+str(num**2),
                     train_loss_summ[num**2][0]/train_loss_summ[num**2][1],
                     epoch)
@@ -174,15 +183,16 @@ for epoch in Tqdm(range(1000), position=0):
                 loss = torch.sum(torch.cat(losses))
             test_loss += loss.item()
             test_graphs += 1
-            test_loss_summ[G.num_nodes][0] += loss.item()
-            test_loss_summ[G.num_nodes][1] += 1
+            test_loss_summ[num_nodes][0] += loss.item()
+            test_loss_summ[num_nodes][1] += 1
     opt.zero_grad() #Don't train Theta on finetune test set when optmizing nodes
     if mesh_opt is not None:
         mesh_opt.step()
         mesh_opt.zero_grad()
         update_meshes_after_opt(mesh_list, epoch=epoch, writer=writer)
     if do_tensorboard:
-        for num in sqrt_num_nodes_list:
+        it_list = [1] if model_type=='NP' else sqrt_num_nodes_list
+        for num in it_list:
             writer.add_scalar('test/loss-'+str(num**2),
                     test_loss_summ[num**2][0]/test_loss_summ[num**2][1],epoch)
             if opt_nodes:
