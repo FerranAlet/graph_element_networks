@@ -18,7 +18,7 @@ from utils import Net
 torch.manual_seed(0)
 cuda = torch.cuda.is_available()
 device = torch.device('cuda') if cuda else torch.device('cpu')
-model_type = ['GENSoftNN', 'GENPlanarGrid', 'NP'][2]
+model_type = ['GENSoftNN', 'GENPlanarGrid', 'NP'][0]
 bs = 8
 k = 32
 node_train = 16
