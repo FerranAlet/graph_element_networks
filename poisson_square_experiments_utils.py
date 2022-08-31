@@ -51,7 +51,7 @@ def create_uniform_grid(n, device='cpu', perturb=0.,
             y = j/(n-1.)
             node_pos.append([x+np.random.normal()*perturb,
                 y+np.random.normal()*perturb])
-    node_pos = torch.FloatTensor(np.stack(node_pos, 0)).cuda()
+    node_pos = torch.FloatTensor(np.stack(node_pos, 0)).to(device)
     if learnable: node_pos = torch.nn.Parameter(node_pos)
     edges = []
     N = n*n
@@ -94,8 +94,8 @@ def create_mesh_list(num_datasets, sqrt_num_nodes_list=[3],
                     aux.append(create_uniform_grid(num_nodes, device=device,
                         perturb=0.2/num_nodes, learnable=True,
                         data_idx=data_idx))
-                    param_list.append(aux[-1].pos)
                 else: raise NotImplementedError
+                param_list.append(aux[-1].pos)
         L.append(aux)
     return L, param_list
 
