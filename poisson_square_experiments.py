@@ -24,7 +24,7 @@ k = 32
 node_train = 16
 sqrt_num_nodes_list = [2,3,4,5,6,7]
 copies_per_graph = 2
-opt_nodes = False
+opt_nodes = True
 slow_opt_nodes = False #Train node_pos only in part of each "house" data;slower
 do_tensorboard = True
 # Changed the random initialization because GeneralizedHalton
