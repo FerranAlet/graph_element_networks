@@ -183,6 +183,7 @@ for epoch in Tqdm(range(1000), position=0):
                 loss = torch.sum(torch.cat(losses))
             test_loss += loss.item()
             test_graphs += 1
+            num_nodes = 0 if model_type== 'NP' else G.num_nodes
             test_loss_summ[num_nodes][0] += loss.item()
             test_loss_summ[num_nodes][1] += 1
     opt.zero_grad() #Don't train Theta on finetune test set when optmizing nodes
